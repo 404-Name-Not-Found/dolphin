@@ -37,7 +37,7 @@ AboutDolphin::AboutDolphin(wxWindow* parent, wxWindowID id, const wxString& titl
         "Dolphin is a free and open-source GameCube and Wii emulator.\n"
         "\n"
         "This software should not be used to play games you do not legally own.\n"
-        "\nWith contributions by: Connor Roth, Calvun Williams, Justin Futrell, Andrew Nguyen\n");
+        "\nWith contributions by: Connor Roth, Calvin Williams, Justin Futrell, Andrew Nguyen\n");
   const wxString LicenseText = _("License");
   const wxString AuthorsText = _("Authors");
   const wxString SupportText = _("Support");
