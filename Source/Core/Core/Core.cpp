@@ -278,6 +278,10 @@ void Stop()  // - Hammertime!
 #if defined(__LIBUSB__)
   GCAdapter::ResetRumble();
 #endif
+#if defined(CIFACE_USE_XINPUT) || defined(CIFACE_USE_DINPUT)
+  for (int i = 0; i != 4; ++i)
+    Pad::ResetRumble(i);
+#endif
 
 #ifdef USE_MEMORYWATCHER
   MemoryWatcher::Shutdown();
