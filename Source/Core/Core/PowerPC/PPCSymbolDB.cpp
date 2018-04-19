@@ -4,6 +4,7 @@
 
 #include "Core/PowerPC/PPCSymbolDB.h"
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <utility>
@@ -73,7 +74,10 @@ void PPCSymbolDB::AddKnownSymbol(u32 startAddr, u32 size, const std::string& nam
       PPCAnalyst::AnalyzeFunction(startAddr, tf, size);
       checksumToFunction[tf.hash].insert(&functions[startAddr]);
     }
-    tf.size = size;
+    else
+    {
+      tf.size = size;
+    }
     functions[startAddr] = tf;
   }
 }
@@ -129,7 +133,7 @@ void PPCSymbolDB::FillInCallers()
       }
       else
       {
-        // LOG(OSHLE, "FillInCallers tries to fill data in an unknown function 0x%08x.",
+        // LOG(SYMBOLS, "FillInCallers tries to fill data in an unknown function 0x%08x.",
         // FunctionAddress);
         // TODO - analyze the function instead.
       }
@@ -143,19 +147,19 @@ void PPCSymbolDB::PrintCalls(u32 funcAddr) const
   if (iter != functions.end())
   {
     const Symbol& f = iter->second;
-    DEBUG_LOG(OSHLE, "The function %s at %08x calls:", f.name.c_str(), f.address);
+    DEBUG_LOG(SYMBOLS, "The function %s at %08x calls:", f.name.c_str(), f.address);
     for (const SCall& call : f.calls)
     {
       XFuncMap::const_iterator n = functions.find(call.function);
       if (n != functions.end())
       {
-        DEBUG_LOG(CONSOLE, "* %08x : %s", call.callAddress, n->second.name.c_str());
+        DEBUG_LOG(SYMBOLS, "* %08x : %s", call.callAddress, n->second.name.c_str());
       }
     }
   }
   else
   {
-    WARN_LOG(CONSOLE, "Symbol does not exist");
+    WARN_LOG(SYMBOLS, "Symbol does not exist");
   }
 }
 
@@ -165,13 +169,13 @@ void PPCSymbolDB::PrintCallers(u32 funcAddr) const
   if (iter != functions.end())
   {
     const Symbol& f = iter->second;
-    DEBUG_LOG(CONSOLE, "The function %s at %08x is called by:", f.name.c_str(), f.address);
+    DEBUG_LOG(SYMBOLS, "The function %s at %08x is called by:", f.name.c_str(), f.address);
     for (const SCall& caller : f.callers)
     {
       XFuncMap::const_iterator n = functions.find(caller.function);
       if (n != functions.end())
       {
-        DEBUG_LOG(CONSOLE, "* %08x : %s", caller.callAddress, n->second.name.c_str());
+        DEBUG_LOG(SYMBOLS, "* %08x : %s", caller.callAddress, n->second.name.c_str());
       }
     }
   }
@@ -219,8 +223,10 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
   if (!f)
     return false;
 
-  // four columns are used in American Mensa Academy map files and perhaps other games
-  bool four_columns = false;
+  // Two columns are used by Super Smash Bros. Brawl Korean map file
+  // Three columns are commonly used
+  // Four columns are used in American Mensa Academy map files and perhaps other games
+  int column_count = 0;
   int good_count = 0;
   int bad_count = 0;
 
@@ -234,7 +240,7 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
 
     if (length == 34 && strcmp(line, "  address  Size   address  offset\n") == 0)
     {
-      four_columns = true;
+      column_count = 4;
       continue;
     }
 
@@ -287,9 +293,19 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
     if (section_name.empty())
       continue;
 
+    // Detect two columns with three columns fallback
+    if (column_count == 0)
+    {
+      const std::string stripped_line = StripSpaces(line);
+      if (std::count(stripped_line.begin(), stripped_line.end(), ' ') == 1)
+        column_count = 2;
+      else
+        column_count = 3;
+    }
+
     u32 address, vaddress, size, offset, alignment;
     char name[512], container[512];
-    if (four_columns)
+    if (column_count == 4)
     {
       // sometimes there is no alignment value, and sometimes it is because it is an entry of
       // something else
@@ -317,32 +333,44 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
                &alignment, name);
       }
     }
-    // some entries in the table have a function name followed by " (entry of " followed by a
-    // container name, followed by ")"
-    // instead of a space followed by a number followed by a space followed by a name
-    else if (length > 27 && line[27] != ' ' && strstr(line, "(entry of "))
+    else if (column_count == 3)
     {
-      alignment = 0;
-      sscanf(line, "%08x %08x %08x %511s", &address, &size, &vaddress, name);
-      char* s = strstr(line, "(entry of ");
-      if (s)
+      // some entries in the table have a function name followed by " (entry of " followed by a
+      // container name, followed by ")"
+      // instead of a space followed by a number followed by a space followed by a name
+      if (length > 27 && line[27] != ' ' && strstr(line, "(entry of "))
       {
-        sscanf(s + 10, "%511s", container);
-        char* s2 = (strchr(container, ')'));
-        if (s2 && container[0] != '.')
+        alignment = 0;
+        sscanf(line, "%08x %08x %08x %511s", &address, &size, &vaddress, name);
+        char* s = strstr(line, "(entry of ");
+        if (s)
         {
-          s2[0] = '\0';
-          strcat(container, "::");
-          strcat(container, name);
-          strcpy(name, container);
+          sscanf(s + 10, "%511s", container);
+          char* s2 = (strchr(container, ')'));
+          if (s2 && container[0] != '.')
+          {
+            s2[0] = '\0';
+            strcat(container, "::");
+            strcat(container, name);
+            strcpy(name, container);
+          }
         }
       }
+      else
+      {
+        sscanf(line, "%08x %08x %08x %i %511s", &address, &size, &vaddress, &alignment, name);
+      }
+    }
+    else if (column_count == 2)
+    {
+      sscanf(line, "%08x %511s", &address, name);
+      vaddress = address;
+      size = 0;
     }
     else
     {
-      sscanf(line, "%08x %08x %08x %i %511s", &address, &size, &vaddress, &alignment, name);
+      break;
     }
-
     const char* namepos = strstr(line, name);
     if (namepos != nullptr)  // would be odd if not :P
       strcpy(name, namepos);

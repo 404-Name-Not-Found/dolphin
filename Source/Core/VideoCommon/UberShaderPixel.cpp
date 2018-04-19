@@ -1157,28 +1157,30 @@ ShaderCode GenPixelShader(APIType ApiType, const ShaderHostConfig& host_config,
             BitfieldExtract("bpmem_fogParam3", FogParam3().proj).c_str());
   out.Write("      // perspective\n"
             "      // ze = A/(B - (Zs >> B_SHF)\n"
-            "      ze = (" I_FOGF "[1].x * 16777216.0) / float(" I_FOGI ".y - (zCoord >> " I_FOGI
+            "      ze = (" I_FOGF ".x * 16777216.0) / float(" I_FOGI ".y - (zCoord >> " I_FOGI
             ".w));\n"
             "    } else {\n"
             "      // orthographic\n"
             "      // ze = a*Zs    (here, no B_SHF)\n"
-            "      ze = " I_FOGF "[1].x * float(zCoord) / 16777216.0;\n"
+            "      ze = " I_FOGF ".z * float(zCoord) / 16777216.0;\n"
             "    }\n"
             "\n"
             "    if (bool(%s)) {\n",
             BitfieldExtract("bpmem_fogRangeBase", FogRangeParams::RangeBase().Enabled).c_str());
   out.Write("      // x_adjust = sqrt((x-center)^2 + k^2)/k\n"
             "      // ze *= x_adjust\n"
-            "      // TODO Instead of this theoretical calculation, we should use the\n"
-            "      //      coefficient table given in the fog range BP registers!\n"
-            "      float x_adjust = (2.0 * (rawpos.x / " I_FOGF "[0].y)) - 1.0 - " I_FOGF
-            "[0].x; \n"
-            "      x_adjust = sqrt(x_adjust * x_adjust + " I_FOGF "[0].z * " I_FOGF
-            "[0].z) / " I_FOGF "[0].z;\n"
+            "      float offset = (2.0 * (rawpos.x / " I_FOGF ".w)) - 1.0 - " I_FOGF ".z;\n"
+            "      float floatindex = clamp(9.0 - abs(offset) * 9.0, 0.0, 9.0);\n"
+            "      uint indexlower = uint(floor(floatindex));\n"
+            "      uint indexupper = indexlower + 1u;\n"
+            "      float klower = " I_FOGRANGE "[indexlower >> 2u][indexlower & 3u];\n"
+            "      float kupper = " I_FOGRANGE "[indexupper >> 2u][indexupper & 3u];\n"
+            "      float k = lerp(klower, kupper, frac(floatindex));\n"
+            "      float x_adjust = sqrt(offset * offset + k * k) / k;\n"
             "      ze *= x_adjust;\n"
             "    }\n"
             "\n"
-            "    float fog = clamp(ze - " I_FOGF "[1].z, 0.0, 1.0);\n"
+            "    float fog = clamp(ze - " I_FOGF ".y, 0.0, 1.0);\n"
             "\n"
             "    if (fog_function > 3u) {\n"
             "      switch (fog_function) {\n"
@@ -1253,7 +1255,7 @@ ShaderCode GenPixelShader(APIType ApiType, const ShaderHostConfig& host_config,
 
   if (use_shader_blend)
   {
-    static const std::array<const char*, 8> blendSrcFactor = {
+    static const std::array<const char*, 8> blendSrcFactor{{
         "float3(0,0,0);",                      // ZERO
         "float3(1,1,1);",                      // ONE
         "initial_ocol0.rgb;",                  // DSTCLR
@@ -1262,8 +1264,8 @@ ShaderCode GenPixelShader(APIType ApiType, const ShaderHostConfig& host_config,
         "float3(1,1,1) - ocol1.aaa;",          // INVSRCALPHA
         "initial_ocol0.aaa;",                  // DSTALPHA
         "float3(1,1,1) - initial_ocol0.aaa;",  // INVDSTALPHA
-    };
-    static const std::array<const char*, 8> blendSrcFactorAlpha = {
+    }};
+    static const std::array<const char*, 8> blendSrcFactorAlpha{{
         "0.0;",                    // ZERO
         "1.0;",                    // ONE
         "initial_ocol0.a;",        // DSTCLR
@@ -1272,8 +1274,8 @@ ShaderCode GenPixelShader(APIType ApiType, const ShaderHostConfig& host_config,
         "1.0 - ocol1.a;",          // INVSRCALPHA
         "initial_ocol0.a;",        // DSTALPHA
         "1.0 - initial_ocol0.a;",  // INVDSTALPHA
-    };
-    static const std::array<const char*, 8> blendDstFactor = {
+    }};
+    static const std::array<const char*, 8> blendDstFactor{{
         "float3(0,0,0);",                      // ZERO
         "float3(1,1,1);",                      // ONE
         "ocol0.rgb;",                          // SRCCLR
@@ -1282,8 +1284,8 @@ ShaderCode GenPixelShader(APIType ApiType, const ShaderHostConfig& host_config,
         "float3(1,1,1) - ocol1.aaa;",          // INVSRCALPHA
         "initial_ocol0.aaa;",                  // DSTALPHA
         "float3(1,1,1) - initial_ocol0.aaa;",  // INVDSTALPHA
-    };
-    static const std::array<const char*, 8> blendDstFactorAlpha = {
+    }};
+    static const std::array<const char*, 8> blendDstFactorAlpha{{
         "0.0;",                    // ZERO
         "1.0;",                    // ONE
         "ocol0.a;",                // SRCCLR
@@ -1292,7 +1294,7 @@ ShaderCode GenPixelShader(APIType ApiType, const ShaderHostConfig& host_config,
         "1.0 - ocol1.a;",          // INVSRCALPHA
         "initial_ocol0.a;",        // DSTALPHA
         "1.0 - initial_ocol0.a;",  // INVDSTALPHA
-    };
+    }};
 
     out.Write("  if (blend_enable) {\n"
               "    float4 blend_src;\n"

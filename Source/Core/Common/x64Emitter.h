@@ -78,21 +78,6 @@ enum
   SCALE_IMM64 = 0xF3,
 };
 
-enum NormalOp
-{
-  nrmADD,
-  nrmADC,
-  nrmSUB,
-  nrmSBB,
-  nrmAND,
-  nrmOR,
-  nrmXOR,
-  nrmMOV,
-  nrmTEST,
-  nrmCMP,
-  nrmXCHG,
-};
-
 enum SSECompare
 {
   CMP_EQ = 0,
@@ -105,18 +90,9 @@ enum SSECompare
   CMP_ORD = 7,
 };
 
-enum FloatOp
-{
-  floatLD = 0,
-  floatST = 2,
-  floatSTP = 3,
-  floatLD80 = 5,
-  floatSTP80 = 7,
-
-  floatINVALID = -1,
-};
-
 class XEmitter;
+enum class FloatOp;
+enum class NormalOp;
 
 // Information about a generated MOV op
 struct MovInfo final
@@ -130,7 +106,9 @@ struct MovInfo final
 // RIP addressing does not benefit from micro op fusion on Core arch
 struct OpArg
 {
-  friend class XEmitter;  // For accessing offset and operandReg
+  // For accessing offset and operandReg.
+  // This also allows us to keep the op writing functions private.
+  friend class XEmitter;
 
   OpArg() {}  // dummy op arg, used for storage
   OpArg(u64 _offset, int _scale, X64Reg rmReg = RAX, X64Reg scaledReg = RAX)
@@ -147,77 +125,69 @@ struct OpArg
     return operandReg == b.operandReg && scale == b.scale && offsetOrBaseReg == b.offsetOrBaseReg &&
            indexReg == b.indexReg && offset == b.offset;
   }
-  void WriteREX(XEmitter* emit, int opBits, int bits, int customOp = -1) const;
-  void WriteVEX(XEmitter* emit, X64Reg regOp1, X64Reg regOp2, int L, int pp, int mmmmm,
-                int W = 0) const;
-  void WriteRest(XEmitter* emit, int extraBytes = 0, X64Reg operandReg = INVALID_REG,
-                 bool warn_64bit_offset = true) const;
-  void WriteSingleByteOp(XEmitter* emit, u8 op, X64Reg operandReg, int bits);
-
   u64 Imm64() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM64);
+    DEBUG_ASSERT(scale == SCALE_IMM64);
     return (u64)offset;
   }
   u32 Imm32() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM32);
+    DEBUG_ASSERT(scale == SCALE_IMM32);
     return (u32)offset;
   }
   u16 Imm16() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM16);
+    DEBUG_ASSERT(scale == SCALE_IMM16);
     return (u16)offset;
   }
   u8 Imm8() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM8);
+    DEBUG_ASSERT(scale == SCALE_IMM8);
     return (u8)offset;
   }
 
   s64 SImm64() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM64);
+    DEBUG_ASSERT(scale == SCALE_IMM64);
     return (s64)offset;
   }
   s32 SImm32() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM32);
+    DEBUG_ASSERT(scale == SCALE_IMM32);
     return (s32)offset;
   }
   s16 SImm16() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM16);
+    DEBUG_ASSERT(scale == SCALE_IMM16);
     return (s16)offset;
   }
   s8 SImm8() const
   {
-    _dbg_assert_(DYNA_REC, scale == SCALE_IMM8);
+    DEBUG_ASSERT(scale == SCALE_IMM8);
     return (s8)offset;
   }
 
   OpArg AsImm64() const
   {
-    _dbg_assert_(DYNA_REC, IsImm());
+    DEBUG_ASSERT(IsImm());
     return OpArg((u64)offset, SCALE_IMM64);
   }
   OpArg AsImm32() const
   {
-    _dbg_assert_(DYNA_REC, IsImm());
+    DEBUG_ASSERT(IsImm());
     return OpArg((u32)offset, SCALE_IMM32);
   }
   OpArg AsImm16() const
   {
-    _dbg_assert_(DYNA_REC, IsImm());
+    DEBUG_ASSERT(IsImm());
     return OpArg((u16)offset, SCALE_IMM16);
   }
   OpArg AsImm8() const
   {
-    _dbg_assert_(DYNA_REC, IsImm());
+    DEBUG_ASSERT(IsImm());
     return OpArg((u8)offset, SCALE_IMM8);
   }
 
-  void WriteNormalOp(XEmitter* emit, bool toRM, NormalOp op, const OpArg& operand, int bits) const;
   bool IsImm() const
   {
     return scale == SCALE_IMM8 || scale == SCALE_IMM16 || scale == SCALE_IMM32 ||
@@ -253,12 +223,20 @@ struct OpArg
 
   void AddMemOffset(int val)
   {
-    _dbg_assert_msg_(DYNA_REC, scale == SCALE_RIP || (scale <= SCALE_ATREG && scale > SCALE_NONE),
+    DEBUG_ASSERT_MSG(DYNA_REC, scale == SCALE_RIP || (scale <= SCALE_ATREG && scale > SCALE_NONE),
                      "Tried to increment an OpArg which doesn't have an offset");
     offset += val;
   }
 
 private:
+  void WriteREX(XEmitter* emit, int opBits, int bits, int customOp = -1) const;
+  void WriteVEX(XEmitter* emit, X64Reg regOp1, X64Reg regOp2, int L, int pp, int mmmmm,
+                int W = 0) const;
+  void WriteRest(XEmitter* emit, int extraBytes = 0, X64Reg operandReg = INVALID_REG,
+                 bool warn_64bit_offset = true) const;
+  void WriteSingleByteOp(XEmitter* emit, u8 op, X64Reg operandReg, int bits);
+  void WriteNormalOp(XEmitter* emit, bool toRM, NormalOp op, const OpArg& operand, int bits) const;
+
   u8 scale;
   u16 offsetOrBaseReg;
   u16 indexReg;
@@ -329,7 +307,7 @@ inline u32 PtrOffset(const void* ptr, const void* base = nullptr)
   s64 distance = (s64)ptr - (s64)base;
   if (distance >= 0x80000000LL || distance < -0x80000000LL)
   {
-    _assert_msg_(DYNA_REC, 0, "pointer offset out of range");
+    ASSERT_MSG(DYNA_REC, 0, "pointer offset out of range");
     return 0;
   }
 

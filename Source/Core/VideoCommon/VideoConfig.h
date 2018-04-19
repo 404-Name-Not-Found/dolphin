@@ -42,6 +42,14 @@ enum class StereoMode : int
   Nvidia3DVision
 };
 
+enum class ShaderCompilationMode : int
+{
+  Synchronous,
+  SynchronousUberShaders,
+  AsynchronousUberShaders,
+  AsynchronousSkipRendering
+};
+
 struct ProjectionHackConfig final
 {
   bool m_enable;
@@ -118,6 +126,7 @@ struct VideoConfig final
   bool bEFBEmulateFormatChanges;
   bool bSkipEFBCopyToRam;
   bool bSkipXFBCopyToRam;
+  bool bDisableCopyToVRAM;
   bool bImmediateXFB;
   bool bCopyEFBScaled;
   int iSafeTextureCache_ColorSamples;
@@ -160,25 +169,9 @@ struct VideoConfig final
   // Currently only supported with Vulkan.
   int iCommandBufferExecuteInterval;
 
-  // The following options determine the ubershader mode:
-  //   No ubershaders:
-  //     - bBackgroundShaderCompiling = false
-  //     - bDisableSpecializedShaders = false
-  //   Hybrid/background compiling:
-  //     - bBackgroundShaderCompiling = true
-  //     - bDisableSpecializedShaders = false
-  //   Ubershaders only:
-  //     - bBackgroundShaderCompiling = false
-  //     - bDisableSpecializedShaders = true
-
-  // Enable background shader compiling, use ubershaders while waiting.
-  bool bBackgroundShaderCompiling;
-
-  // Use ubershaders only, don't compile specialized shaders.
-  bool bDisableSpecializedShaders;
-
-  // Precompile ubershader variants at boot/config reload time.
-  bool bPrecompileUberShaders;
+  // Shader compilation settings.
+  bool bWaitForShadersBeforeStarting;
+  ShaderCompilationMode iShaderCompilationMode;
 
   // Number of shader compiler threads.
   // 0 disables background compilation.
@@ -222,11 +215,11 @@ struct VideoConfig final
     bool bSupportsGPUTextureDecoding;
     bool bSupportsST3CTextures;
     bool bSupportsCopyToVram;
-    bool bForceCopyToRam;                  // Needed by Software Renderer
     bool bSupportsBitfield;                // Needed by UberShaders, so must stay in VideoCommon
     bool bSupportsDynamicSamplerIndexing;  // Needed by UberShaders, so must stay in VideoCommon
     bool bSupportsBPTCTextures;
     bool bSupportsFramebufferFetch;  // Used as an alternative to dual-source blend on GLES
+    bool bSupportsBackgroundCompiling;
   } backend_info;
 
   // Utility
@@ -246,10 +239,9 @@ struct VideoConfig final
     return backend_info.bSupportsGPUTextureDecoding && bEnableGPUTextureDecoding;
   }
   bool UseVertexRounding() const { return bVertexRounding && iEFBScale != 1; }
+  bool UsingUberShaders() const;
   u32 GetShaderCompilerThreads() const;
   u32 GetShaderPrecompilerThreads() const;
-  bool CanPrecompileUberShaders() const;
-  bool CanBackgroundCompileShaders() const;
 };
 
 extern VideoConfig g_Config;

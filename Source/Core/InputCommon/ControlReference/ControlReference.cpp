@@ -105,9 +105,9 @@ ControlState InputReference::State(const ControlState ignore)
 //
 ControlState OutputReference::State(const ControlState state)
 {
-  if (m_parsed_expression && InputGateOn())
+  if (m_parsed_expression)
     m_parsed_expression->SetValue(state);
-  return 0.0;
+ return 0.0;
 }
 
 //

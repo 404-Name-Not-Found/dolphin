@@ -70,6 +70,7 @@ bool Jitx86Base::BackPatch(u32 emAddress, SContext* ctx)
 
   js.generatingTrampoline = true;
   js.trampolineExceptionHandler = exceptionHandler;
+  js.compilerPC = info.pc;
 
   // Generate the trampoline.
   const u8* trampoline = trampolines.GenerateTrampoline(info);
@@ -108,7 +109,7 @@ bool Jitx86Base::BackPatch(u32 emAddress, SContext* ctx)
       *ptr = Common::swap64(static_cast<u64>(*ptr));
       break;
     default:
-      _dbg_assert_(DYNA_REC, 0);
+      DEBUG_ASSERT(0);
       break;
     }
   }

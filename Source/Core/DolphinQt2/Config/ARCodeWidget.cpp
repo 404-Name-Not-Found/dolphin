@@ -14,12 +14,12 @@
 #include "Common/IniFile.h"
 #include "Core/ActionReplay.h"
 #include "Core/ConfigManager.h"
-#include "DolphinQt2/Config/ARCodeEditor.h"
+#include "DolphinQt2/Config/CheatCodeEditor.h"
 #include "DolphinQt2/Config/CheatWarningWidget.h"
-#include "DolphinQt2/GameList/GameFile.h"
+#include "UICommon/GameFile.h"
 
-ARCodeWidget::ARCodeWidget(const GameFile& game)
-    : m_game(game), m_game_id(game.GetGameID().toStdString()), m_game_revision(game.GetRevision())
+ARCodeWidget::ARCodeWidget(const UICommon::GameFile& game)
+    : m_game(game), m_game_id(game.GetGameID()), m_game_revision(game.GetRevision())
 {
   CreateWidgets();
   ConnectWidgets();
@@ -41,9 +41,9 @@ void ARCodeWidget::CreateWidgets()
 {
   m_warning = new CheatWarningWidget(m_game_id);
   m_code_list = new QListWidget;
-  m_code_add = new QPushButton(tr("Add New Code..."));
-  m_code_edit = new QPushButton(tr("Edit Code..."));
-  m_code_remove = new QPushButton(tr("Remove Code"));
+  m_code_add = new QPushButton(tr("&Add New Code..."));
+  m_code_edit = new QPushButton(tr("&Edit Code..."));
+  m_code_remove = new QPushButton(tr("&Remove Code"));
 
   auto* button_layout = new QHBoxLayout;
 
@@ -90,7 +90,7 @@ void ARCodeWidget::OnSelectionChanged()
   bool user_defined = m_ar_codes[m_code_list->row(selected)].user_defined;
 
   m_code_remove->setEnabled(user_defined);
-  m_code_edit->setText(user_defined ? tr("Edit Code...") : tr("Clone and Edit Code..."));
+  m_code_edit->setText(user_defined ? tr("&Edit Code...") : tr("Clone and &Edit Code..."));
 }
 
 void ARCodeWidget::UpdateList()
@@ -122,15 +122,19 @@ void ARCodeWidget::SaveCodes()
 void ARCodeWidget::OnCodeAddPressed()
 {
   ActionReplay::ARCode ar;
+  ar.active = true;
 
-  ARCodeEditor ed(ar);
+  CheatCodeEditor ed;
 
-  ed.exec();
+  ed.SetARCode(&ar);
 
-  m_ar_codes.push_back(std::move(ar));
+  if (ed.exec())
+  {
+    m_ar_codes.push_back(std::move(ar));
 
-  UpdateList();
-  SaveCodes();
+    UpdateList();
+    SaveCodes();
+  }
 }
 
 void ARCodeWidget::OnCodeEditPressed()
@@ -148,8 +152,9 @@ void ARCodeWidget::OnCodeEditPressed()
 
   ActionReplay::ARCode ar = current_ar;
 
-  ARCodeEditor ed(user_defined ? current_ar : ar);
+  CheatCodeEditor ed;
 
+  ed.SetARCode(user_defined ? &current_ar : &ar);
   ed.exec();
 
   if (!user_defined)

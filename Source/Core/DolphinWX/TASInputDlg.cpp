@@ -819,7 +819,9 @@ void TASInputDlg::GetValues(u8* data, WiimoteEmu::ReportFeatures rptf, int ext,
       }
       else
       {
-        memset(data, 0xFF, sizeof(wm_ir_extended) * 4);
+        // TODO: this code doesnt work, resulting in no IR TAS inputs in e.g. wii sports menu when
+        // no remote extension is used
+        memset(irData, 0xFF, sizeof(wm_ir_extended) * 4);
         wm_ir_extended* const ir_data = (wm_ir_extended*)irData;
         for (size_t i = 0; i < x.size(); ++i)
         {
@@ -1198,8 +1200,8 @@ void TASInputDlg::InvalidateExtension()
 void TASInputDlg::UpdateFromInvalidatedButton(wxCommandEvent& event)
 {
   auto* button = static_cast<Button*>(event.GetClientData());
-  _assert_msg_(PAD, button->id == button->checkbox->GetId(), "Button ids do not match: %i != %i",
-               button->id, button->checkbox->GetId());
+  ASSERT_MSG(PAD, button->id == button->checkbox->GetId(), "Button ids do not match: %i != %i",
+             button->id, button->checkbox->GetId());
   button->checkbox->SetValue(button->value);
   button->is_checked = button->value;
 }
@@ -1207,8 +1209,8 @@ void TASInputDlg::UpdateFromInvalidatedButton(wxCommandEvent& event)
 void TASInputDlg::UpdateFromInvalidatedControl(wxCommandEvent& event)
 {
   auto* control = static_cast<Control*>(event.GetClientData());
-  _assert_msg_(PAD, control->text_id == control->text->GetId(),
-               "Control ids do not match: %i != %i", control->text_id, control->text->GetId());
+  ASSERT_MSG(PAD, control->text_id == control->text->GetId(), "Control ids do not match: %i != %i",
+             control->text_id, control->text->GetId());
   control->text->SetValue(std::to_string(control->value));
 }
 

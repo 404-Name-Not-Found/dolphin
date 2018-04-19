@@ -54,12 +54,12 @@
 #include "DolphinWX/DolphinSlider.h"
 #include "DolphinWX/Frame.h"
 #include "DolphinWX/Globals.h"
-#include "DolphinWX/ISOFile.h"
 #include "DolphinWX/ISOProperties/FilesystemPanel.h"
 #include "DolphinWX/ISOProperties/InfoPanel.h"
 #include "DolphinWX/Main.h"
 #include "DolphinWX/PatchAddEdit.h"
 #include "DolphinWX/WxUtils.h"
+#include "UICommon/GameFile.h"
 
 // A warning message displayed on the ARCodes and GeckoCodes pages when cheats are
 // disabled globally to explain why turning cheats on does not work.
@@ -190,15 +190,15 @@ EVT_BUTTON(ID_ADDPATCH, CISOProperties::PatchButtonClicked)
 EVT_BUTTON(ID_REMOVEPATCH, CISOProperties::PatchButtonClicked)
 END_EVENT_TABLE()
 
-CISOProperties::CISOProperties(const GameListItem& game_list_item, wxWindow* parent, wxWindowID id,
-                               const wxString& title, const wxPoint& position, const wxSize& size,
-                               long style)
+CISOProperties::CISOProperties(const UICommon::GameFile& game_list_item, wxWindow* parent,
+                               wxWindowID id, const wxString& title, const wxPoint& position,
+                               const wxSize& size, long style)
     : wxDialog(parent, id, title, position, size, style), m_open_gamelist_item(game_list_item)
 {
   Bind(DOLPHIN_EVT_CHANGE_ISO_PROPERTIES_TITLE, &CISOProperties::OnChangeTitle, this);
 
   // Load ISO data
-  m_open_iso = DiscIO::CreateVolumeFromFilename(m_open_gamelist_item.GetFileName());
+  m_open_iso = DiscIO::CreateVolumeFromFilename(m_open_gamelist_item.GetFilePath());
 
   m_game_id = m_open_iso->GetGameID();
 
@@ -293,7 +293,7 @@ void CISOProperties::CreateGUIControls()
 
   wxBoxSizer* const gpu_determinism_sizer = new wxBoxSizer(wxHORIZONTAL);
   wxStaticText* const gpu_determinism_text =
-      new wxStaticText(m_GameConfig, wxID_ANY, _("Deterministic dual core: "));
+      new wxStaticText(m_GameConfig, wxID_ANY, _("Deterministic dual core:"));
   m_gpu_determinism_string.Add(_("Not Set"));
   m_gpu_determinism_string.Add(_("auto"));
   m_gpu_determinism_string.Add(_("none"));
@@ -311,7 +311,7 @@ void CISOProperties::CreateGUIControls()
   // Stereoscopy
   wxBoxSizer* const depth_percentage = new wxBoxSizer(wxHORIZONTAL);
   wxStaticText* const depth_percentage_text =
-      new wxStaticText(m_GameConfig, wxID_ANY, _("Depth Percentage: "));
+      new wxStaticText(m_GameConfig, wxID_ANY, _("Depth Percentage:"));
   m_depth_percentage = new DolphinSlider(m_GameConfig, ID_DEPTHPERCENTAGE, 100, 0, 200);
   m_depth_percentage->SetToolTip(
       _("This value is multiplied with the depth set in the graphics configuration."));
@@ -320,7 +320,7 @@ void CISOProperties::CreateGUIControls()
 
   wxBoxSizer* const convergence_sizer = new wxBoxSizer(wxHORIZONTAL);
   wxStaticText* const convergence_text =
-      new wxStaticText(m_GameConfig, wxID_ANY, _("Convergence: "));
+      new wxStaticText(m_GameConfig, wxID_ANY, _("Convergence:"));
   m_convergence = new wxSpinCtrl(m_GameConfig, ID_CONVERGENCE);
   m_convergence->SetRange(0, INT32_MAX);
   m_convergence->SetToolTip(
@@ -335,7 +335,7 @@ void CISOProperties::CreateGUIControls()
 
   wxBoxSizer* const emustate_sizer = new wxBoxSizer(wxHORIZONTAL);
   wxStaticText* const emustate_text =
-      new wxStaticText(m_GameConfig, wxID_ANY, _("Emulation State: "));
+      new wxStaticText(m_GameConfig, wxID_ANY, _("Emulation State:"));
   m_emustate_string.Add(_("Not Set"));
   m_emustate_string.Add(_("Broken"));
   m_emustate_string.Add(_("Intro"));

@@ -1,6 +1,9 @@
 set(SRCS
+  AutoUpdate.cpp
   CommandLineParse.cpp
   Disassembler.cpp
+  GameFile.cpp
+  GameFileCache.cpp
   UICommon.cpp
   USBUtils.cpp
   VideoUtils.cpp

@@ -132,7 +132,7 @@ GLuint TextureCache::GetColorCopyPositionUniform() const
 bool TextureCache::CompilePaletteShader(TLUTFormat tlutfmt, const std::string& vcode,
                                         const std::string& pcode, const std::string& gcode)
 {
-  _assert_(IsValidTLUTFormat(tlutfmt));
+  ASSERT(IsValidTLUTFormat(tlutfmt));
   PaletteShader& shader = m_palette_shaders[static_cast<int>(tlutfmt)];
 
   if (!ProgramShaderCache::CompileShader(shader.shader, vcode, pcode, gcode))
@@ -289,7 +289,7 @@ void TextureCache::ConvertTexture(TCacheEntry* destination, TCacheEntry* source,
   if (!g_ActiveConfig.backend_info.bSupportsPaletteConversion)
     return;
 
-  _assert_(IsValidTLUTFormat(tlutfmt));
+  ASSERT(IsValidTLUTFormat(tlutfmt));
   const PaletteShader& palette_shader = m_palette_shaders[static_cast<int>(tlutfmt)];
 
   g_renderer->ResetAPIState();
@@ -320,10 +320,9 @@ void TextureCache::ConvertTexture(TCacheEntry* destination, TCacheEntry* source,
   glBindTexture(GL_TEXTURE_BUFFER, m_palette_resolv_texture);
   g_sampler_cache->BindNearestSampler(10);
 
-  OpenGL_BindAttributelessVAO();
+  ProgramShaderCache::BindVertexFormat(nullptr);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-  FramebufferManager::SetFramebuffer(0);
   g_renderer->RestoreAPIState();
 }
 
@@ -496,8 +495,6 @@ void TextureCache::CopyEFBToCacheEntry(TCacheEntry* entry, bool is_depth_copy,
 
   FramebufferManager::SetFramebuffer(destination_texture->GetFramebuffer());
 
-  OpenGL_BindAttributelessVAO();
-
   glActiveTexture(GL_TEXTURE9);
   glBindTexture(GL_TEXTURE_2D_ARRAY, read_texture);
   if (scale_by_half)
@@ -539,9 +536,9 @@ void TextureCache::CopyEFBToCacheEntry(TCacheEntry* entry, bool is_depth_copy,
   glUniform4f(shader.position_uniform, static_cast<float>(R.left), static_cast<float>(R.top),
               static_cast<float>(R.right), static_cast<float>(R.bottom));
 
+  ProgramShaderCache::BindVertexFormat(nullptr);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-  FramebufferManager::SetFramebuffer(0);
   g_renderer->RestoreAPIState();
 }
 }

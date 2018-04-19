@@ -76,12 +76,11 @@ const ConfigInfo<bool> GFX_BACKEND_MULTITHREADING{
 const ConfigInfo<int> GFX_COMMAND_BUFFER_EXECUTE_INTERVAL{
     {System::GFX, "Settings", "CommandBufferExecuteInterval"}, 100};
 const ConfigInfo<bool> GFX_SHADER_CACHE{{System::GFX, "Settings", "ShaderCache"}, true};
-const ConfigInfo<bool> GFX_BACKGROUND_SHADER_COMPILING{
-    {System::GFX, "Settings", "BackgroundShaderCompiling"}, false};
-const ConfigInfo<bool> GFX_DISABLE_SPECIALIZED_SHADERS{
-    {System::GFX, "Settings", "DisableSpecializedShaders"}, false};
-const ConfigInfo<bool> GFX_PRECOMPILE_UBER_SHADERS{
-    {System::GFX, "Settings", "PrecompileUberShaders"}, true};
+const ConfigInfo<bool> GFX_WAIT_FOR_SHADERS_BEFORE_STARTING{
+    {System::GFX, "Settings", "WaitForShadersBeforeStarting"}, false};
+const ConfigInfo<int> GFX_SHADER_COMPILATION_MODE{
+    {System::GFX, "Settings", "ShaderCompilationMode"},
+    static_cast<int>(ShaderCompilationMode::Synchronous)};
 const ConfigInfo<int> GFX_SHADER_COMPILER_THREADS{
     {System::GFX, "Settings", "ShaderCompilerThreads"}, 1};
 const ConfigInfo<int> GFX_SHADER_PRECOMPILER_THREADS{
@@ -132,6 +131,8 @@ const ConfigInfo<bool> GFX_HACK_SKIP_EFB_COPY_TO_RAM{{System::GFX, "Hacks", "EFB
                                                      true};
 const ConfigInfo<bool> GFX_HACK_SKIP_XFB_COPY_TO_RAM{{System::GFX, "Hacks", "XFBToTextureEnable"},
                                                      true};
+const ConfigInfo<bool> GFX_HACK_DISABLE_COPY_TO_VRAM{{System::GFX, "Hacks", "DisableCopyToVRAM"},
+                                                     false};
 const ConfigInfo<bool> GFX_HACK_IMMEDIATE_XFB{{System::GFX, "Hacks", "ImmediateXFBEnable"}, false};
 const ConfigInfo<bool> GFX_HACK_COPY_EFB_SCALED{{System::GFX, "Hacks", "EFBScaledCopy"}, true};
 const ConfigInfo<bool> GFX_HACK_EFB_EMULATE_FORMAT_CHANGES{

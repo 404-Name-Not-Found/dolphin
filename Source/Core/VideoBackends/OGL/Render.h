@@ -14,6 +14,7 @@ struct XFBSourceBase;
 
 namespace OGL
 {
+class OGLPipeline;
 void ClearEFBCache();
 
 enum GlslVersion
@@ -84,21 +85,33 @@ public:
   ~Renderer() override;
 
   void Init();
-  void Shutdown();
+  void Shutdown() override;
 
   std::unique_ptr<AbstractTexture> CreateTexture(const TextureConfig& config) override;
   std::unique_ptr<AbstractStagingTexture>
   CreateStagingTexture(StagingTextureType type, const TextureConfig& config) override;
+  std::unique_ptr<AbstractShader> CreateShaderFromSource(ShaderStage stage, const char* source,
+                                                         size_t length) override;
+  std::unique_ptr<AbstractShader> CreateShaderFromBinary(ShaderStage stage, const void* data,
+                                                         size_t length) override;
+  std::unique_ptr<AbstractPipeline> CreatePipeline(const AbstractPipelineConfig& config) override;
+  std::unique_ptr<AbstractFramebuffer>
+  CreateFramebuffer(const AbstractTexture* color_attachment,
+                    const AbstractTexture* depth_attachment) override;
 
-  void SetBlendingState(const BlendingState& state) override;
-  void SetScissorRect(const EFBRectangle& rc) override;
-  void SetRasterizationState(const RasterizationState& state) override;
-  void SetDepthState(const DepthState& state) override;
+  void SetPipeline(const AbstractPipeline* pipeline) override;
+  void SetFramebuffer(const AbstractFramebuffer* framebuffer) override;
+  void SetAndDiscardFramebuffer(const AbstractFramebuffer* framebuffer) override;
+  void SetAndClearFramebuffer(const AbstractFramebuffer* framebuffer,
+                              const ClearColor& color_value = {},
+                              float depth_value = 0.0f) override;
+  void SetScissorRect(const MathUtil::Rectangle<int>& rc) override;
   void SetTexture(u32 index, const AbstractTexture* texture) override;
   void SetSamplerState(u32 index, const SamplerState& state) override;
   void UnbindTexture(const AbstractTexture* texture) override;
   void SetInterlacingMode() override;
-  void SetViewport() override;
+  void SetViewport(float x, float y, float width, float height, float near_depth,
+                   float far_depth) override;
 
   void RenderText(const std::string& text, int left, int top, u32 color) override;
 
@@ -120,7 +133,13 @@ public:
 
   void ReinterpretPixelData(unsigned int convtype) override;
 
-  void ChangeSurface(void* new_surface_handle) override;
+  void DrawUtilityPipeline(const void* uniforms, u32 uniforms_size, const void* vertices,
+                           u32 vertex_stride, u32 num_vertices) override;
+
+  void DispatchComputeShader(const AbstractShader* shader, const void* uniforms, u32 uniforms_size,
+                             u32 groups_x, u32 groups_y, u32 groups_z) override;
+
+  std::unique_ptr<VideoCommon::AsyncShaderCompiler> CreateAsyncShaderCompiler() override;
 
 private:
   void UpdateEFBCache(EFBAccessType type, u32 cacheRectIdx, const EFBRectangle& efbPixelRc,
@@ -132,6 +151,18 @@ private:
   void BlitScreen(TargetRectangle src, TargetRectangle dst, GLuint src_texture, int src_width,
                   int src_height);
 
+  void CheckForSurfaceChange();
+  void CheckForSurfaceResize();
+
+  void ApplyBlendingState(const BlendingState state, bool force = false);
+  void ApplyRasterizationState(const RasterizationState state, bool force = false);
+  void ApplyDepthState(const DepthState state, bool force = false);
+  void UploadUtilityUniforms(const void* uniforms, u32 uniforms_size);
+
   std::array<const AbstractTexture*, 8> m_bound_textures{};
+  const OGLPipeline* m_graphics_pipeline = nullptr;
+  RasterizationState m_current_rasterization_state = {};
+  DepthState m_current_depth_state = {};
+  BlendingState m_current_blend_state = {};
 };
 }

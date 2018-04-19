@@ -23,6 +23,7 @@
 #include "Common/MsgHandler.h"
 #include "Common/NandPaths.h"
 #include "Common/StringUtil.h"
+#include "Common/scmrev.h"
 
 #include "Core/Analytics.h"
 #include "Core/Boot/Boot.h"
@@ -90,6 +91,7 @@ void SConfig::SaveSettings()
   SaveNetworkSettings(ini);
   SaveBluetoothPassthroughSettings(ini);
   SaveUSBPassthroughSettings(ini);
+  SaveAutoUpdateSettings(ini);
 
   ini.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
@@ -170,7 +172,6 @@ void SConfig::SaveInterfaceSettings(IniFile& ini)
   interface->Set("ExtendedFPSInfo", m_InterfaceExtendedFPSInfo);
   interface->Set("ShowActiveTitle", m_show_active_title);
   interface->Set("UseBuiltinTitleDatabase", m_use_builtin_title_database);
-  interface->Set("ShowDevelopmentWarning", m_show_development_warning);
   interface->Set("ThemeName", theme_name);
   interface->Set("PauseOnFocusLost", m_PauseOnFocusLost);
   interface->Set("DisableTooltips", m_DisableTooltips);
@@ -370,6 +371,14 @@ void SConfig::SaveUSBPassthroughSettings(IniFile& ini)
   section->Set("Devices", devices_string);
 }
 
+void SConfig::SaveAutoUpdateSettings(IniFile& ini)
+{
+  IniFile::Section* section = ini.GetOrCreateSection("AutoUpdate");
+
+  section->Set("TrackForTesting", m_auto_update_track);
+  section->Set("HashOverride", m_auto_update_hash_override);
+}
+
 void SConfig::LoadSettings()
 {
   Config::Load();
@@ -391,6 +400,7 @@ void SConfig::LoadSettings()
   LoadAnalyticsSettings(ini);
   LoadBluetoothPassthroughSettings(ini);
   LoadUSBPassthroughSettings(ini);
+  LoadAutoUpdateSettings(ini);
 }
 
 void SConfig::LoadGeneralSettings(IniFile& ini)
@@ -449,7 +459,6 @@ void SConfig::LoadInterfaceSettings(IniFile& ini)
   interface->Get("ExtendedFPSInfo", &m_InterfaceExtendedFPSInfo, false);
   interface->Get("ShowActiveTitle", &m_show_active_title, true);
   interface->Get("UseBuiltinTitleDatabase", &m_use_builtin_title_database, true);
-  interface->Get("ShowDevelopmentWarning", &m_show_development_warning, true);
   interface->Get("ThemeName", &theme_name, DEFAULT_THEME_DIR);
   interface->Get("PauseOnFocusLost", &m_PauseOnFocusLost, false);
   interface->Get("DisableTooltips", &m_DisableTooltips, false);
@@ -557,7 +566,7 @@ void SConfig::LoadCoreSettings(IniFile& ini)
   core->Get("WiimoteEnableSpeaker", &m_WiimoteEnableSpeaker, false);
   core->Get("RunCompareServer", &bRunCompareServer, false);
   core->Get("RunCompareClient", &bRunCompareClient, false);
-  core->Get("MMU", &bMMU, false);
+  core->Get("MMU", &bMMU, bMMU);
   core->Get("BBDumpPort", &iBBDumpPort, -1);
   core->Get("SyncGPU", &bSyncGPU, false);
   core->Get("SyncGpuMaxDistance", &iSyncGpuMaxDistance, 200000);
@@ -671,6 +680,15 @@ void SConfig::LoadUSBPassthroughSettings(IniFile& ini)
   }
 }
 
+void SConfig::LoadAutoUpdateSettings(IniFile& ini)
+{
+  IniFile::Section* section = ini.GetOrCreateSection("AutoUpdate");
+
+  // TODO: Rename and default to SCM_UPDATE_TRACK_STR when ready for general consumption.
+  section->Get("TrackForTesting", &m_auto_update_track, "");
+  section->Get("HashOverride", &m_auto_update_hash_override, "");
+}
+
 void SConfig::ResetRunningGameMetadata()
 {
   SetRunningGameMetadata("00000000", 0, 0, Core::TitleDatabase::TitleType::Other);
@@ -772,7 +790,11 @@ void SConfig::LoadDefaults()
   bFastmem = true;
   bFPRF = false;
   bAccurateNaNs = false;
+#ifdef _M_X86_64
+  bMMU = true;
+#else
   bMMU = false;
+#endif
   bDCBZOFF = false;
   bLowDCBZHack = false;
   iBBDumpPort = -1;
@@ -843,7 +865,7 @@ const char* SConfig::GetDirectoryForRegion(DiscIO::Region region)
     return EUR_DIR;
 
   case DiscIO::Region::NTSC_K:
-    _assert_msg_(BOOT, false, "NTSC-K is not a valid GameCube region");
+    ASSERT_MSG(BOOT, false, "NTSC-K is not a valid GameCube region");
     return nullptr;
 
   default:

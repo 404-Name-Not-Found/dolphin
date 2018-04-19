@@ -397,7 +397,8 @@ void WritePixelShaderCommonHeader(ShaderCode& out, APIType ApiType, u32 num_texg
             "\tint4 " I_INDTEXMTX "[6];\n"
             "\tint4 " I_FOGCOLOR ";\n"
             "\tint4 " I_FOGI ";\n"
-            "\tfloat4 " I_FOGF "[2];\n"
+            "\tfloat4 " I_FOGF ";\n"
+            "\tfloat4 " I_FOGRANGE "[3];\n"
             "\tfloat4 " I_ZSLOPE ";\n"
             "\tfloat2 " I_EFBSCALE ";\n"
             "\tuint  bpmem_genmode;\n"
@@ -946,7 +947,7 @@ static void WriteStage(ShaderCode& out, const pixel_shader_uid_data* uid_data, i
       }
       else if (tevind.mid <= 7 && bHasTexCoord)
       {  // s matrix
-        _assert_(tevind.mid >= 5);
+        ASSERT(tevind.mid >= 5);
         int mtxidx = 2 * (tevind.mid - 5);
         out.SetConstantsUsed(C_INDTEXMTX + mtxidx, C_INDTEXMTX + mtxidx);
 
@@ -968,7 +969,7 @@ static void WriteStage(ShaderCode& out, const pixel_shader_uid_data* uid_data, i
       }
       else if (tevind.mid <= 11 && bHasTexCoord)
       {  // t matrix
-        _assert_(tevind.mid >= 9);
+        ASSERT(tevind.mid >= 9);
         int mtxidx = 2 * (tevind.mid - 9);
         out.SetConstantsUsed(C_INDTEXMTX + mtxidx, C_INDTEXMTX + mtxidx);
 
@@ -1331,30 +1332,33 @@ static void WriteFog(ShaderCode& out, const pixel_shader_uid_data* uid_data)
     // renderer)
     //       Maybe we want to use "ze = (A << B_SHF)/((B << B_SHF) - Zs)" instead?
     //       That's equivalent, but keeps the lower bits of Zs.
-    out.Write("\tfloat ze = (" I_FOGF "[1].x * 16777216.0) / float(" I_FOGI
-              ".y - (zCoord >> " I_FOGI ".w));\n");
+    out.Write("\tfloat ze = (" I_FOGF ".x * 16777216.0) / float(" I_FOGI ".y - (zCoord >> " I_FOGI
+              ".w));\n");
   }
   else
   {
     // orthographic
     // ze = a*Zs    (here, no B_SHF)
-    out.Write("\tfloat ze = " I_FOGF "[1].x * float(zCoord) / 16777216.0;\n");
+    out.Write("\tfloat ze = " I_FOGF ".x * float(zCoord) / 16777216.0;\n");
   }
 
   // x_adjust = sqrt((x-center)^2 + k^2)/k
   // ze *= x_adjust
-  // TODO Instead of this theoretical calculation, we should use the
-  //      coefficient table given in the fog range BP registers!
   if (uid_data->fog_RangeBaseEnabled)
   {
     out.SetConstantsUsed(C_FOGF, C_FOGF);
-    out.Write("\tfloat x_adjust = (2.0 * (rawpos.x / " I_FOGF "[0].y)) - 1.0 - " I_FOGF "[0].x;\n");
-    out.Write("\tx_adjust = sqrt(x_adjust * x_adjust + " I_FOGF "[0].z * " I_FOGF "[0].z) / " I_FOGF
-              "[0].z;\n");
+    out.Write("\tfloat offset = (2.0 * (rawpos.x / " I_FOGF ".w)) - 1.0 - " I_FOGF ".z;\n");
+    out.Write("\tfloat floatindex = clamp(9.0 - abs(offset) * 9.0, 0.0, 9.0);\n");
+    out.Write("\tuint indexlower = uint(floor(floatindex));\n");
+    out.Write("\tuint indexupper = indexlower + 1u;\n");
+    out.Write("\tfloat klower = " I_FOGRANGE "[indexlower >> 2u][indexlower & 3u];\n");
+    out.Write("\tfloat kupper = " I_FOGRANGE "[indexupper >> 2u][indexupper & 3u];\n");
+    out.Write("\tfloat k = lerp(klower, kupper, frac(floatindex));\n");
+    out.Write("\tfloat x_adjust = sqrt(offset * offset + k * k) / k;\n");
     out.Write("\tze *= x_adjust;\n");
   }
 
-  out.Write("\tfloat fog = clamp(ze - " I_FOGF "[1].z, 0.0, 1.0);\n");
+  out.Write("\tfloat fog = clamp(ze - " I_FOGF ".y, 0.0, 1.0);\n");
 
   if (uid_data->fog_fsel > 3)
   {
@@ -1416,7 +1420,7 @@ static void WriteBlend(ShaderCode& out, const pixel_shader_uid_data* uid_data)
 {
   if (uid_data->blend_enable)
   {
-    static const std::array<const char*, 8> blendSrcFactor = {
+    static const std::array<const char*, 8> blendSrcFactor{{
         "float3(0,0,0);",                      // ZERO
         "float3(1,1,1);",                      // ONE
         "initial_ocol0.rgb;",                  // DSTCLR
@@ -1425,8 +1429,8 @@ static void WriteBlend(ShaderCode& out, const pixel_shader_uid_data* uid_data)
         "float3(1,1,1) - ocol1.aaa;",          // INVSRCALPHA
         "initial_ocol0.aaa;",                  // DSTALPHA
         "float3(1,1,1) - initial_ocol0.aaa;",  // INVDSTALPHA
-    };
-    static const std::array<const char*, 8> blendSrcFactorAlpha = {
+    }};
+    static const std::array<const char*, 8> blendSrcFactorAlpha{{
         "0.0;",                    // ZERO
         "1.0;",                    // ONE
         "initial_ocol0.a;",        // DSTCLR
@@ -1435,8 +1439,8 @@ static void WriteBlend(ShaderCode& out, const pixel_shader_uid_data* uid_data)
         "1.0 - ocol1.a;",          // INVSRCALPHA
         "initial_ocol0.a;",        // DSTALPHA
         "1.0 - initial_ocol0.a;",  // INVDSTALPHA
-    };
-    static const std::array<const char*, 8> blendDstFactor = {
+    }};
+    static const std::array<const char*, 8> blendDstFactor{{
         "float3(0,0,0);",                      // ZERO
         "float3(1,1,1);",                      // ONE
         "ocol0.rgb;",                          // SRCCLR
@@ -1445,8 +1449,8 @@ static void WriteBlend(ShaderCode& out, const pixel_shader_uid_data* uid_data)
         "float3(1,1,1) - ocol1.aaa;",          // INVSRCALPHA
         "initial_ocol0.aaa;",                  // DSTALPHA
         "float3(1,1,1) - initial_ocol0.aaa;",  // INVDSTALPHA
-    };
-    static const std::array<const char*, 8> blendDstFactorAlpha = {
+    }};
+    static const std::array<const char*, 8> blendDstFactorAlpha{{
         "0.0;",                    // ZERO
         "1.0;",                    // ONE
         "ocol0.a;",                // SRCCLR
@@ -1455,7 +1459,7 @@ static void WriteBlend(ShaderCode& out, const pixel_shader_uid_data* uid_data)
         "1.0 - ocol1.a;",          // INVSRCALPHA
         "initial_ocol0.a;",        // DSTALPHA
         "1.0 - initial_ocol0.a;",  // INVDSTALPHA
-    };
+    }};
     out.Write("\tfloat4 blend_src;\n");
     out.Write("\tblend_src.rgb = %s\n", blendSrcFactor[uid_data->blend_src_factor]);
     out.Write("\tblend_src.a = %s\n", blendSrcFactorAlpha[uid_data->blend_src_factor_alpha]);

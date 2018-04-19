@@ -5,6 +5,7 @@
 #include <QKeyEvent>
 #include <QTimer>
 
+#include "Core/ConfigManager.h"
 #include "DolphinQt2/Host.h"
 #include "DolphinQt2/RenderWidget.h"
 #include "DolphinQt2/Settings.h"
@@ -15,6 +16,12 @@ RenderWidget::RenderWidget(QWidget* parent) : QWidget(parent)
   setAttribute(Qt::WA_NoSystemBackground, true);
 
   connect(Host::GetInstance(), &Host::RequestTitle, this, &RenderWidget::setWindowTitle);
+  connect(Host::GetInstance(), &Host::RequestRenderSize, this, [this](int w, int h) {
+    if (!SConfig::GetInstance().bRenderWindowAutoSize || isFullScreen() || isMaximized())
+      return;
+
+    resize(w, h);
+  });
 
   // We have to use Qt::DirectConnection here because we don't want those signals to get queued
   // (which results in them not getting called)
@@ -22,7 +29,7 @@ RenderWidget::RenderWidget(QWidget* parent) : QWidget(parent)
           Qt::DirectConnection);
   connect(this, &RenderWidget::HandleChanged, Host::GetInstance(), &Host::SetRenderHandle,
           Qt::DirectConnection);
-  connect(this, &RenderWidget::SizeChanged, Host::GetInstance(), &Host::UpdateSurface,
+  connect(this, &RenderWidget::SizeChanged, Host::GetInstance(), &Host::ResizeSurface,
           Qt::DirectConnection);
 
   emit HandleChanged((void*)winId());
@@ -49,6 +56,12 @@ void RenderWidget::HandleCursorTimer()
     setCursor(Qt::BlankCursor);
 }
 
+void RenderWidget::showFullScreen()
+{
+  QWidget::showFullScreen();
+  emit SizeChanged(width(), height());
+}
+
 bool RenderWidget::event(QEvent* event)
 {
   switch (event->type())
@@ -58,6 +71,12 @@ bool RenderWidget::event(QEvent* event)
     QKeyEvent* ke = static_cast<QKeyEvent*>(event);
     if (ke->key() == Qt::Key_Escape)
       emit EscapePressed();
+
+    // The render window might flicker on some platforms because Qt tries to change focus to a new
+    // element when there is none (?) Handling this event before it reaches QWidget fixes the issue.
+    if (ke->key() == Qt::Key_Tab)
+      return true;
+
     break;
   }
   case QEvent::MouseMove:
@@ -78,8 +97,12 @@ bool RenderWidget::event(QEvent* event)
     Host::GetInstance()->SetRenderFocus(false);
     break;
   case QEvent::Resize:
-    emit SizeChanged();
+  {
+    const QResizeEvent* se = static_cast<QResizeEvent*>(event);
+    QSize new_size = se->size();
+    emit SizeChanged(new_size.width(), new_size.height());
     break;
+  }
   case QEvent::WindowStateChange:
     emit StateChanged(isFullScreen());
     break;

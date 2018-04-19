@@ -1,4 +1,5 @@
 set(SRCS
+  AbstractFramebuffer.cpp
   AbstractStagingTexture.cpp
   AbstractTexture.cpp
   AsyncRequests.cpp
@@ -21,7 +22,6 @@ set(SRCS
   ImageWrite.cpp
   IndexGenerator.cpp
   LightingShaderGen.cpp
-  MainBase.cpp
   OnScreenDisplay.cpp
   OpcodeDecoding.cpp
   PerfQueryBase.cpp
@@ -31,6 +31,7 @@ set(SRCS
   PostProcessing.cpp
   RenderBase.cpp
   RenderState.cpp
+  ShaderCache.cpp
   ShaderGenCommon.cpp
   Statistics.cpp
   UberShaderCommon.cpp

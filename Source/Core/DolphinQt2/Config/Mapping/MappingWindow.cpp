@@ -22,6 +22,7 @@
 #include "DolphinQt2/Config/Mapping/GCMicrophone.h"
 #include "DolphinQt2/Config/Mapping/GCPadEmu.h"
 #include "DolphinQt2/Config/Mapping/Hotkey3D.h"
+#include "DolphinQt2/Config/Mapping/HotkeyDebugging.h"
 #include "DolphinQt2/Config/Mapping/HotkeyGeneral.h"
 #include "DolphinQt2/Config/Mapping/HotkeyGraphics.h"
 #include "DolphinQt2/Config/Mapping/HotkeyStates.h"
@@ -30,6 +31,7 @@
 #include "DolphinQt2/Config/Mapping/WiimoteEmuExtension.h"
 #include "DolphinQt2/Config/Mapping/WiimoteEmuGeneral.h"
 #include "DolphinQt2/Config/Mapping/WiimoteEmuMotionControl.h"
+#include "DolphinQt2/QtUtils/WrapInScrollArea.h"
 #include "DolphinQt2/Settings.h"
 #include "InputCommon/ControllerEmu/ControllerEmu.h"
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
@@ -224,7 +226,8 @@ void MappingWindow::RefreshDevices()
 
     const auto default_device = m_controller->GetDefaultDevice().ToString();
 
-    m_devices_combo->addItem(QString::fromStdString(default_device));
+    if (!default_device.empty())
+      m_devices_combo->addItem(QString::fromStdString(default_device));
 
     for (const auto& name : g_controller_interface.GetAllDeviceStrings())
     {
@@ -277,6 +280,7 @@ void MappingWindow::SetMappingType(MappingWindow::Type type)
     widget = new HotkeyGeneral(this);
     AddWidget(tr("General"), widget);
     AddWidget(tr("TAS Tools"), new HotkeyTAS(this));
+    AddWidget(tr("Debugging"), new HotkeyDebugging(this));
     AddWidget(tr("Wii and Wii Remote"), new HotkeyWii(this));
     AddWidget(tr("Graphics"), new HotkeyGraphics(this));
     AddWidget(tr("3D"), new Hotkey3D(this));
@@ -309,7 +313,7 @@ void MappingWindow::SetMappingType(MappingWindow::Type type)
 
 void MappingWindow::AddWidget(const QString& name, QWidget* widget)
 {
-  m_tab_widget->addTab(widget, name);
+  m_tab_widget->addTab(GetWrappedWidget(widget, this, 150, 150), name);
 }
 
 int MappingWindow::GetPort() const
