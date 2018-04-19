@@ -106,7 +106,7 @@ ControlState InputReference::State(const ControlState ignore)
 ControlState OutputReference::State(const ControlState state)
 {
   if (m_parsed_expression)
-    m_parsed_expression->SetValue(state);
+    m_parsed_expression->SetValue(state * range);
  return 0.0;
 }
 
