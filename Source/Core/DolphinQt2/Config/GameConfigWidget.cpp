@@ -23,6 +23,7 @@
 #include "Core/ConfigLoaders/GameConfigLoader.h"
 #include "Core/ConfigManager.h"
 #include "DolphinQt2/Config/Graphics/GraphicsSlider.h"
+#include "InputCommon/InputConfig.h"
 #include "UICommon/GameFile.h"
 
 constexpr int DETERMINISM_NOT_SET_INDEX = 0;
@@ -39,7 +40,7 @@ GameConfigWidget::GameConfigWidget(const UICommon::GameFile& game) : m_game(game
 {
   m_game_id = m_game.GetGameID();
   m_gameini_local_path =
-      QString::fromStdString(File::GetUserPath(D_GAMESETTINGS_IDX) + m_game_id + ".ini");
+    QString::fromStdString(File::GetUserPath(D_GAMESETTINGS_IDX) + m_game_id + ".ini");
   m_gameini_local = SConfig::LoadLocalGameIni(m_game_id, m_game.GetRevision());
   m_gameini_default = SConfig::LoadDefaultGameIni(m_game_id, m_game.GetRevision());
 
@@ -67,18 +68,18 @@ void GameConfigWidget::CreateWidgets()
   m_use_dsp_hle = new QCheckBox(tr("DSP HLE Emulation (fast)"));
   m_deterministic_dual_core = new QComboBox;
 
-  for (const auto& item : {tr("Not Set"), tr("auto"), tr("none"), tr("fake-completion")})
+  for (const auto& item : { tr("Not Set"), tr("auto"), tr("none"), tr("fake-completion") })
     m_deterministic_dual_core->addItem(item);
 
   m_enable_mmu->setToolTip(tr(
-      "Enables the Memory Management Unit, needed for some games. (ON = Compatible, OFF = Fast)"));
+    "Enables the Memory Management Unit, needed for some games. (ON = Compatible, OFF = Fast)"));
 
   m_enable_fprf->setToolTip(tr("Enables Floating Point Result Flag calculation, needed for a few "
-                               "games. (ON = Compatible, OFF = Fast)"));
+    "games. (ON = Compatible, OFF = Fast)"));
   m_sync_gpu->setToolTip(tr("Synchronizes the GPU and CPU threads to help prevent random freezes "
-                            "in Dual core mode. (ON = Compatible, OFF = Fast)"));
+    "in Dual core mode. (ON = Compatible, OFF = Fast)"));
   m_enable_fast_disc->setToolTip(tr("Enable fast disc access. This can cause crashes and other "
-                                    "problems in some games. (ON = Fast, OFF = Compatible)"));
+    "problems in some games. (ON = Fast, OFF = Compatible)"));
 
   core_layout->addWidget(m_enable_dual_core, 0, 0);
   core_layout->addWidget(m_enable_mmu, 1, 0);
@@ -105,11 +106,11 @@ void GameConfigWidget::CreateWidgets()
   m_use_monoscopic_shadows = new QCheckBox(tr("Monoscopic Shadows"));
 
   m_depth_slider->setToolTip(
-      tr("This value is multiplied with the depth set in the graphics configuration."));
+    tr("This value is multiplied with the depth set in the graphics configuration."));
   m_convergence_spin->setToolTip(
-      tr("This value is added to the convergence value set in the graphics configuration."));
+    tr("This value is added to the convergence value set in the graphics configuration."));
   m_use_monoscopic_shadows->setToolTip(
-      tr("Use a single depth buffer for both eyes. Needed for a few games."));
+    tr("Use a single depth buffer for both eyes. Needed for a few games."));
 
   stereoscopy_layout->addWidget(new QLabel(tr("Depth Percentage:")), 0, 0);
   stereoscopy_layout->addWidget(m_depth_slider, 0, 1);
@@ -117,20 +118,59 @@ void GameConfigWidget::CreateWidgets()
   stereoscopy_layout->addWidget(m_convergence_spin, 1, 1);
   stereoscopy_layout->addWidget(m_use_monoscopic_shadows, 2, 0);
 
+  // Controller Profiles
+  auto* controller_box = new QGroupBox(tr("Controller Profiles"));
+  m_controller_layout = new QGridLayout;
+  controller_box->setLayout(m_controller_layout);
+
+  for (int i = 0; i < m_controller_combos.size(); i++)
+  {
+    auto* control_combo = m_controller_combos[i] = new QComboBox;
+    for (const auto& item : { tr("GameCube"), tr("Wii") })
+      control_combo->addItem(item);
+    if (i < 4)
+    {
+      auto* gcport_combo = m_gcport_combos[0] = new QComboBox;
+      for (const auto& item : { tr("Port 1"), tr("Port 2"), tr("Port 3"), tr("Port 4") })
+        gcport_combo->addItem(item);
+      m_controller_layout->addWidget(gcport_combo, i, 1);
+    }
+    else
+    {
+      auto* wiimote_box = m_wiimote_combos[i - 4] = new QComboBox;
+      for (const auto& item : { tr("Remote 1"), tr("Remote 2"), tr("Remote 3"), tr("Remote 4") })
+        wiimote_box->addItem(item);
+      m_controller_layout->addWidget(wiimote_box, i, 1);
+    }
+    auto profile_combo = m_profile_combos[i] = new QComboBox;
+    profile_combo->setEditable(true);
+    auto* remove_button = m_remove_buttons[i] = new QPushButton(tr("Remove"));
+
+    m_controller_layout->addWidget(control_combo, i, 0);
+    m_controller_layout->addWidget(profile_combo, i, 2);
+    m_controller_layout->addWidget(remove_button, i, 3);
+  }
+  m_add_profile = new QPushButton(tr("Add Profile..."));
+
+  if (m_controller_layout->rowCount() != 8)
+    m_controller_layout->addWidget(m_add_profile, 8, 0);
+  //--
+
   auto* settings_box = new QGroupBox(tr("Game-Specific Settings"));
   auto* settings_layout = new QVBoxLayout;
   settings_box->setLayout(settings_layout);
 
   settings_layout->addWidget(
-      new QLabel(tr("These settings override core Dolphin settings.\nUndetermined means the game "
-                    "uses Dolphin's setting.")));
+    new QLabel(tr("These settings override core Dolphin settings.\nUndetermined means the game "
+      "uses Dolphin's setting.")));
   settings_layout->addWidget(core_box);
   settings_layout->addWidget(stereoscopy_box);
+  settings_layout->addWidget(controller_box);
 
   m_state_combo = new QComboBox;
 
   for (const auto& item :
-       {tr("Not Set"), tr("Broken"), tr("Intro"), tr("In Game"), tr("Playable"), tr("Perfect")})
+    { tr("Not Set"), tr("Broken"), tr("Intro"), tr("In Game"), tr("Playable"), tr("Perfect") })
     m_state_combo->addItem(item);
 
   m_state_comment_edit = new QLineEdit;
@@ -153,8 +193,8 @@ void GameConfigWidget::CreateWidgets()
   button_layout->addWidget(m_edit_user_config);
   button_layout->addWidget(m_view_default_config);
 
-  for (QCheckBox* item : {m_enable_dual_core, m_enable_mmu, m_enable_fprf, m_sync_gpu,
-                          m_enable_fast_disc, m_use_dsp_hle, m_use_monoscopic_shadows})
+  for (QCheckBox* item : { m_enable_dual_core, m_enable_mmu, m_enable_fprf, m_sync_gpu,
+    m_enable_fast_disc, m_use_dsp_hle, m_use_monoscopic_shadows })
     item->setTristate(true);
 
   emulation_state->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -169,27 +209,28 @@ void GameConfigWidget::ConnectWidgets()
   connect(m_refresh_config, &QPushButton::pressed, this, &GameConfigWidget::LoadSettings);
   connect(m_edit_user_config, &QPushButton::pressed, this, &GameConfigWidget::EditUserConfig);
   connect(m_view_default_config, &QPushButton::pressed, this, &GameConfigWidget::ViewDefaultConfig);
+  connect(m_add_profile, &QPushButton::pressed, this, &GameConfigWidget::OnProfileAdd);
 
   // Settings
   connect(m_state_combo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-          this, &GameConfigWidget::SaveSettings);
+    this, &GameConfigWidget::SaveSettings);
   connect(m_state_comment_edit, &QLineEdit::editingFinished, this, &GameConfigWidget::SaveSettings);
 
-  for (QCheckBox* box : {m_enable_dual_core, m_enable_mmu, m_enable_fprf, m_sync_gpu,
-                         m_enable_fast_disc, m_use_dsp_hle, m_use_monoscopic_shadows})
+  for (QCheckBox* box : { m_enable_dual_core, m_enable_mmu, m_enable_fprf, m_sync_gpu,
+    m_enable_fast_disc, m_use_dsp_hle, m_use_monoscopic_shadows })
     connect(box, &QCheckBox::toggled, this, &GameConfigWidget::SaveSettings);
 
   connect(m_deterministic_dual_core,
-          static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
-          &GameConfigWidget::SaveSettings);
+    static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
+    &GameConfigWidget::SaveSettings);
   connect(m_depth_slider, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged), this,
-          &GameConfigWidget::SaveSettings);
+    &GameConfigWidget::SaveSettings);
   connect(m_convergence_spin, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-          &GameConfigWidget::SaveSettings);
+    &GameConfigWidget::SaveSettings);
 }
 
 void GameConfigWidget::LoadCheckBox(QCheckBox* checkbox, const std::string& section,
-                                    const std::string& key)
+  const std::string& key)
 {
   bool checked;
 
@@ -203,7 +244,7 @@ void GameConfigWidget::LoadCheckBox(QCheckBox* checkbox, const std::string& sect
 }
 
 void GameConfigWidget::SaveCheckBox(QCheckBox* checkbox, const std::string& section,
-                                    const std::string& key)
+  const std::string& key)
 {
   // Delete any existing entries from the local gameini if checkbox is undetermined.
   // Otherwise, write the current value to the local gameini if the value differs from the default
@@ -289,6 +330,44 @@ void GameConfigWidget::LoadSettings()
   m_convergence_spin->setValue(convergence);
 
   LoadCheckBox(m_use_monoscopic_shadows, "Video_Stereoscopy", "StereoEFBMonoDepth");
+
+  // Controller Profiles
+  std::string gcprofile1, gcprofile2, gcprofile3, gcprofile4,
+    wiiprofile1, wiiprofile2, wiiprofile3, wiiprofile4;
+  m_gameini_default.GetIfExists("Controls", "PadProfile1", &gcprofile1);
+  m_gameini_local.GetIfExists("Controls", "PadProfile1", &gcprofile1);
+  m_gameini_default.GetIfExists("Controls", "PadProfile2", &gcprofile2);
+  m_gameini_local.GetIfExists("Controls", "PadProfile2", &gcprofile2);
+  m_gameini_default.GetIfExists("Controls", "PadProfile3", &gcprofile3);
+  m_gameini_local.GetIfExists("Controls", "PadProfile3", &gcprofile3);
+  m_gameini_default.GetIfExists("Controls", "PadProfile4", &gcprofile4);
+  m_gameini_local.GetIfExists("Controls", "PadProfile4", &gcprofile4);
+
+  if (gcprofile1 != "")
+  {
+    m_controller_combos[0]->setCurrentIndex(0);
+    //m_gcport_boxes[0]->
+  }
+  else
+  {
+    m_controller_combos[0]->hide();
+    m_gcport_combos[0]->hide();
+    m_profile_combos[0]->hide();
+    m_remove_buttons[0]->hide();
+  }
+  if (gcprofile2 != "")
+  {
+    m_controller_combos[1]->setCurrentIndex(0);
+  }
+
+  m_gameini_default.GetIfExists("Controls", "WiimoteProfile1", &wiiprofile1);
+  m_gameini_local.GetIfExists("Controls", "WiimoteProfile1", &wiiprofile1);
+  m_gameini_default.GetIfExists("Controls", "WiimoteProfile2", &wiiprofile2);
+  m_gameini_local.GetIfExists("Controls", "WiimoteProfile2", &wiiprofile2);
+  m_gameini_default.GetIfExists("Controls", "WiimoteProfile3", &wiiprofile3);
+  m_gameini_local.GetIfExists("Controls", "WiimoteProfile3", &wiiprofile3);
+  m_gameini_default.GetIfExists("Controls", "WiimoteProfile4", &wiiprofile4);
+  m_gameini_local.GetIfExists("Controls", "WiimoteProfile4", &wiiprofile4);
 }
 
 void GameConfigWidget::SaveSettings()
@@ -334,7 +413,7 @@ void GameConfigWidget::SaveSettings()
   {
     std::string default_mode = DETERMINISM_NOT_SET_STRING;
     if (!(m_gameini_default.GetIfExists("Core", "GPUDeterminismMode", &default_mode) &&
-          default_mode == determinism_mode))
+      default_mode == determinism_mode))
     {
       m_gameini_local.GetOrCreateSection("Core")->Set("GPUDeterminismMode", determinism_mode);
     }
@@ -347,11 +426,11 @@ void GameConfigWidget::SaveSettings()
   {
     int default_value = 0;
     if (!(m_gameini_default.GetIfExists("Video_Stereoscopy", "StereoDepthPercentage",
-                                        &default_value) &&
-          default_value == depth_percentage))
+      &default_value) &&
+      default_value == depth_percentage))
     {
       m_gameini_local.GetOrCreateSection("Video_Stereoscopy")
-          ->Set("StereoDepthPercentage", depth_percentage);
+        ->Set("StereoDepthPercentage", depth_percentage);
     }
   }
 
@@ -360,10 +439,10 @@ void GameConfigWidget::SaveSettings()
   {
     int default_value = 0;
     if (!(m_gameini_default.GetIfExists("Video_Stereoscopy", "StereoConvergence", &default_value) &&
-          default_value == convergence))
+      default_value == convergence))
     {
       m_gameini_local.GetOrCreateSection("Video_Stereoscopy")
-          ->Set("StereoConvergence", convergence);
+        ->Set("StereoConvergence", convergence);
     }
   }
 
@@ -374,6 +453,12 @@ void GameConfigWidget::SaveSettings()
   // If the resulting file is empty, delete it. Kind of a hack, but meh.
   if (success && File::GetSize(m_gameini_local_path.toStdString()) == 0)
     File::Delete(m_gameini_local_path.toStdString());
+}
+
+void GameConfigWidget::OnProfileAdd()
+{
+  //int controller_row = m_controller_layout->rowCount();
+
 }
 
 void GameConfigWidget::EditUserConfig()
@@ -392,10 +477,10 @@ void GameConfigWidget::EditUserConfig()
 void GameConfigWidget::ViewDefaultConfig()
 {
   for (const std::string& filename :
-       ConfigLoaders::GetGameIniFilenames(m_game_id, m_game.GetRevision()))
+    ConfigLoaders::GetGameIniFilenames(m_game_id, m_game.GetRevision()))
   {
     QString path =
-        QString::fromStdString(File::GetSysDirectory() + GAMESETTINGS_DIR DIR_SEP + filename);
+      QString::fromStdString(File::GetSysDirectory() + GAMESETTINGS_DIR DIR_SEP + filename);
 
     if (QFile(path).exists())
       QDesktopServices::openUrl(QUrl::fromLocalFile(path));

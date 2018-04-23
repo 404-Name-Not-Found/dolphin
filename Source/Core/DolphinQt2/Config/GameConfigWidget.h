@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <array>
 #include <string>
 
 #include <QString>
@@ -13,11 +14,13 @@
 
 namespace UICommon
 {
-class GameFile;
+  class GameFile;
 }
 
+class InputConfig;
 class QCheckBox;
 class QComboBox;
+class QGridLayout;
 class QGroupBox;
 class QLineEdit;
 class QPushButton;
@@ -37,6 +40,7 @@ private:
   void LoadSettings();
   void SaveSettings();
 
+  void OnProfileAdd();
   void EditUserConfig();
   void ViewDefaultConfig();
 
@@ -63,10 +67,20 @@ private:
   QSpinBox* m_convergence_spin;
   QCheckBox* m_use_monoscopic_shadows;
 
+  // Controller Profile
+  QGridLayout* m_controller_layout;
+  QPushButton* m_add_profile;
+  std::array<QComboBox*, 8> m_controller_combos;
+  std::array<QComboBox*, 4> m_gcport_combos;
+  std::array<QComboBox*, 4> m_wiimote_combos;
+  std::array<QComboBox*, 8> m_profile_combos;
+  std::array<QPushButton*, 8> m_remove_buttons;
+
   QString m_gameini_local_path;
 
   IniFile m_gameini_local;
   IniFile m_gameini_default;
+  InputConfig* m_config;
 
   const UICommon::GameFile& m_game;
   std::string m_game_id;
