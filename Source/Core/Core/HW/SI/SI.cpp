@@ -587,8 +587,8 @@ void ChangeDeviceDeterministic(SIDevices device, int channel)
   // Called from savestates, so we don't use FromThread::NON_CPU.
   if (GetDeviceType(channel) != device)
   {
-    CoreTiming::ScheduleEvent(0, s_change_device_event, ((u64)channel << 32) | SIDEVICE_NONE);
-    CoreTiming::ScheduleEvent(SystemTimers::GetTicksPerSecond(), s_change_device_event,
+    // this should immediately set the input device to the current input device
+    CoreTiming::ScheduleEvent(0, s_change_device_event,
                               ((u64)channel << 32) | device);
   }
 }
