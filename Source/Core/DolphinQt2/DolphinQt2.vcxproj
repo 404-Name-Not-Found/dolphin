@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -250,6 +250,7 @@
     <ClCompile Include="Config\LogWidget.cpp" />
     <ClCompile Include="Config\NewPatchDialog.cpp" />
     <ClCompile Include="Config\PatchesWidget.cpp" />
+    <ClCompile Include="Config\ProfileConfigWidget.cpp" />
     <ClCompile Include="Config\PropertiesDialog.cpp" />
     <ClCompile Include="Config\SettingsWindow.cpp" />
     <ClCompile Include="Debugger\CodeViewWidget.cpp" />
@@ -319,6 +320,7 @@
     <ClInclude Include="Config\Mapping\HotkeyGraphics.h" />
     <ClInclude Include="Config\Mapping\HotkeyStates.h" />
     <ClInclude Include="Config\Mapping\HotkeyTAS.h" />
+    <ClInclude Include="Config\ProfileConfigWidget.h" />
     <ClInclude Include="QtUtils\WinIconHelper.h" />
     <ClInclude Include="TAS\Shared.h" />
     <ClInclude Include="Config\Mapping\HotkeyWii.h" />

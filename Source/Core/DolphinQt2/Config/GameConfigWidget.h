@@ -18,6 +18,7 @@ class GameFile;
 
 class QCheckBox;
 class QComboBox;
+class QGridLayout;
 class QGroupBox;
 class QLineEdit;
 class QPushButton;
@@ -36,6 +37,8 @@ private:
   void ConnectWidgets();
   void LoadSettings();
   void SaveSettings();
+
+  void OnProfileAdd();
 
   void EditUserConfig();
   void ViewDefaultConfig();
@@ -60,6 +63,10 @@ private:
   QSlider* m_depth_slider;
   QSpinBox* m_convergence_spin;
   QCheckBox* m_use_monoscopic_shadows;
+
+	// Controller Profiles
+  QGridLayout* m_profiles_layout;
+	QPushButton* m_add_profile_button;
 
   QString m_gameini_local_path;
 

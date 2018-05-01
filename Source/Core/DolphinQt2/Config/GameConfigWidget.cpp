@@ -23,6 +23,7 @@
 #include "Core/ConfigLoaders/GameConfigLoader.h"
 #include "Core/ConfigManager.h"
 #include "DolphinQt2/Config/Graphics/GraphicsSlider.h"
+#include "DolphinQt2/Config/ProfileConfigWidget.h"
 #include "UICommon/GameFile.h"
 
 constexpr int DETERMINISM_NOT_SET_INDEX = 0;
@@ -117,6 +118,14 @@ void GameConfigWidget::CreateWidgets()
   stereoscopy_layout->addWidget(m_convergence_spin, 1, 1);
   stereoscopy_layout->addWidget(m_use_monoscopic_shadows, 2, 0);
 
+  // Controller Profiles
+  auto* profiles_box = new QGroupBox(tr("Controller Profiles"));
+  m_profiles_layout = new QGridLayout;
+  profiles_box->setLayout(m_profiles_layout);
+
+  m_add_profile_button = new QPushButton(tr("Add Profile"));
+  m_profiles_layout->addWidget(m_add_profile_button, 0, 0);
+
   auto* settings_box = new QGroupBox(tr("Game-Specific Settings"));
   auto* settings_layout = new QVBoxLayout;
   settings_box->setLayout(settings_layout);
@@ -126,6 +135,7 @@ void GameConfigWidget::CreateWidgets()
                     "uses Dolphin's setting.")));
   settings_layout->addWidget(core_box);
   settings_layout->addWidget(stereoscopy_box);
+  settings_layout->addWidget(profiles_box);
 
   auto* layout = new QGridLayout;
 
@@ -153,6 +163,7 @@ void GameConfigWidget::ConnectWidgets()
   connect(m_refresh_config, &QPushButton::pressed, this, &GameConfigWidget::LoadSettings);
   connect(m_edit_user_config, &QPushButton::pressed, this, &GameConfigWidget::EditUserConfig);
   connect(m_view_default_config, &QPushButton::pressed, this, &GameConfigWidget::ViewDefaultConfig);
+  connect(m_add_profile_button, &QPushButton::pressed, this, &GameConfigWidget::OnProfileAdd);
 
   for (QCheckBox* box : {m_enable_dual_core, m_enable_mmu, m_enable_fprf, m_sync_gpu,
                          m_enable_fast_disc, m_use_dsp_hle, m_use_monoscopic_shadows})
@@ -337,6 +348,12 @@ void GameConfigWidget::SaveSettings()
   // If the resulting file is empty, delete it. Kind of a hack, but meh.
   if (success && File::GetSize(m_gameini_local_path.toStdString()) == 0)
     File::Delete(m_gameini_local_path.toStdString());
+}
+
+void GameConfigWidget::OnProfileAdd()
+{
+  auto* profile_widget = new ProfileConfigWidget;
+  m_profiles_layout->addWidget(profile_widget);
 }
 
 void GameConfigWidget::EditUserConfig()
